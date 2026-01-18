@@ -1,23 +1,28 @@
 {
-  "name": "gatillo3",
+  "name": "gatillo",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "react-router build",
-    "dev": "cross-env NODE_ENV=development node server.js",
-    "start": "node server.js",
-    "typecheck": "react-router typegen && tsc -b"
+    "build": "source $HOME/.nvm/nvm.sh; nvm use && react-router build",
+    "dev": "source $HOME/.nvm/nvm.sh; nvm use && cross-env NODE_ENV=development node server.js",
+    "start": "source $HOME/.nvm/nvm.sh; nvm use && node server.js",
+    "typecheck": "source $HOME/.nvm/nvm.sh; nvm use && react-router typegen && tsc -b"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.978.0",
     "@react-router/express": "7.12.0",
     "@react-router/node": "7.12.0",
     "compression": "^1.8.1",
     "express": "^5.1.0",
+    "express-session": "^1.19.0",
     "isbot": "^5.1.31",
     "morgan": "^1.10.1",
+    "passport": "^0.7.0",
+    "passport-magic-link": "^3.0.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-router": "7.12.0"
+    "react-router": "7.12.0",
+    "session-file-store": "^1.5.0"
   },
   "devDependencies": {
     "@react-router/dev": "7.12.0",
@@ -25,10 +30,13 @@
     "@types/compression": "^1.8.1",
     "@types/express": "^5.0.3",
     "@types/express-serve-static-core": "^5.0.7",
+    "@types/express-session": "^1.18.2",
     "@types/morgan": "^1.9.10",
     "@types/node": "^22",
+    "@types/passport": "^1.0.17",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/session-file-store": "^1.2.6",
     "cross-env": "^10.0.0",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",

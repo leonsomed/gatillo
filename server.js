@@ -23,7 +23,8 @@ if (DEVELOPMENT) {
   app.use(async (req, res, next) => {
     try {
       const source = await viteDevServer.ssrLoadModule("./server/app.ts");
-      return await source.app(req, res, next);
+      const nestedApp = await source.initApp();
+      return await nestedApp(req, res, next);
     } catch (error) {
       if (typeof error === "object" && error instanceof Error) {
         viteDevServer.ssrFixStacktrace(error);
@@ -39,7 +40,8 @@ if (DEVELOPMENT) {
   );
   app.use(morgan("tiny"));
   app.use(express.static("build/client", { maxAge: "1h" }));
-  app.use(await import(BUILD_PATH).then((mod) => mod.app));
+  const nestedApp = await import(BUILD_PATH).then((mod) => mod.initApp());
+  app.use(nestedApp);
 }
 
 app.listen(PORT, () => {
