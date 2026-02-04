@@ -55,12 +55,12 @@ export async function reportError(
     options,
   };
 
+  const output = JSON.stringify(payload, null, 2);
+  console.error(output);
   if (
     process.env.NODE_ENV === "production" &&
     process.env.NODE_MAINTAINER_EMAIL
   ) {
-    const output = JSON.stringify(payload, null, 2);
-    console.error(output);
     await sendEmailViaSmtp({
       subject: `Gatillo Error Report`,
       to: process.env.NODE_MAINTAINER_EMAIL as string,

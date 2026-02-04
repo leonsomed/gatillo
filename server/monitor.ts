@@ -13,6 +13,8 @@ import {
   uploadCheckinTimestampToS3,
 } from "./s3";
 import { sendEmailViaSmtp } from "./email";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 function isCheckinDue(trigger: Trigger, now: number) {
   return (
@@ -48,9 +50,16 @@ async function sendCheckinNotification(trigger: Trigger, now: number) {
 Time since last check in ${msToTimeSince(now - (trigger.lastIntervalTimestamp || 0))}.
 URL: ${process.env.BASE_URL}/api/triggers/checkin/${token}`,
   });
+  if (process.env.NODE_ENV !== "production") {
+    console.log(
+      `Check-in URL: ${process.env.BASE_URL}/api/triggers/checkin/${token}`,
+    );
+  }
 }
 
 async function sendTriggerNotification(trigger: Trigger) {
+  const claimHtmlPath = path.resolve(process.cwd(), "public", "claim.html");
+  const claimHtml = await readFile(claimHtmlPath, "utf8");
   const recipients = trigger.recipients
     .split(",")
     .map((n) => n.trim())
@@ -60,16 +69,28 @@ async function sendTriggerNotification(trigger: Trigger) {
       subject: trigger.subject || "gatillo message",
       to: recipient,
       content: `URL: ${process.env.BASE_URL}/triggers/claim/${trigger.id}.
-If the link is not available you can download the attachment and recover via the gatillo app.
+If the link is not available you can download all attachments and double click claim.html then follow the instructions in that page to upload the message.json file.
 ${trigger.note}`,
-      attachmentJson: {
-        filename: "gatillo-message.json",
-        data: {
-          github: "https://github.com/leonsomed/gatillo",
-          note: trigger.note,
-          encrypted: JSON.parse(trigger.encrypted),
+      attachments: [
+        {
+          filename: "message.json",
+          content: JSON.stringify(
+            {
+              github: "https://github.com/leonsomed/gatillo",
+              note: trigger.note,
+              encrypted: JSON.parse(trigger.encrypted),
+            },
+            null,
+            2,
+          ),
+          contentType: "application/json",
         },
-      },
+        {
+          filename: "claim.html",
+          content: claimHtml,
+          contentType: "text/html",
+        },
+      ],
     });
   }
 }

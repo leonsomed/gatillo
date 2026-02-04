@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claim message file - gatillo</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        margin: 0;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      main {
+        max-width: 720px;
+        margin: 48px auto;
+        padding: 0 24px;
+      }
+      h1 {
+        margin-bottom: 12px;
+      }
+      p {
+        color: #cbd5f5;
+        line-height: 1.5;
+      }
+      label {
+        display: block;
+        margin-top: 16px;
+        font-weight: 600;
+      }
+      input[type="file"],
+      input[type="password"],
+      textarea,
+      button {
+        width: 100%;
+        margin-top: 8px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #334155;
+        background: #0b1220;
+        color: #e2e8f0;
+        box-sizing: border-box;
+      }
+      textarea {
+        min-height: 140px;
+        resize: vertical;
+      }
+      button {
+        cursor: pointer;
+        background: #1d4ed8;
+        border: none;
+        font-weight: 600;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .status {
+        margin-top: 12px;
+        color: #fca5a5;
+      }
+      .muted {
+        color: #94a3b8;
+        font-size: 0.95rem;
+      }
+      .section {
+        margin-top: 24px;
+        padding: 16px;
+        border-radius: 12px;
+        background: #111827;
+        border: 1px solid #1f2937;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Message delivery</h1>
+      <p>
+        This page decrypts a JSON file that you received via an email
+        notification. Upload the file to continue.
+      </p>
+      <input id="claimFile" type="file" accept="application/json" />
+      <p id="fileName" class="muted"></p>
+      <p id="loading" class="muted" hidden>Loading message...</p>
+      <p id="status" class="status" hidden></p>
+
+      <section id="claimSection" class="section" hidden>
+        <p class="muted">
+          Enter the password to decrypt the message from the author. The note
+          might contain a hint.
+        </p>
+        <form id="decryptForm">
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="current-password" />
+
+          <label for="note">Note</label>
+          <textarea id="note" rows="6" readonly></textarea>
+
+          <button id="decryptButton" type="submit">Decrypt</button>
+        </form>
+      </section>
+
+      <section id="decryptedSection" class="section" hidden>
+        <label for="noteReadOnly">Note</label>
+        <textarea id="noteReadOnly" rows="6" readonly></textarea>
+
+        <label for="decrypted">Decrypted data</label>
+        <textarea id="decrypted" rows="6" readonly></textarea>
+      </section>
+    </main>
+
+    <script>
+      "use strict";
+
+      const AES_ALGO = "AES-GCM";
+      const IV_LENGTH = 12;
+      const SALT_LENGTH = 16;
+
+      function base64ToUint8Array(base64) {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+      }
+
+      function getKeyMaterial(password) {
+        const enc = new TextEncoder();
+        return window.crypto.subtle.importKey(
+          "raw",
+          enc.encode(password),
+          "PBKDF2",
+          false,
+          ["deriveBits", "deriveKey"],
+        );
+      }
+
+      async function getKey(password, salt) {
+        const keyMaterial = await getKeyMaterial(password);
+        return window.crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt,
+            iterations: 100000,
+            hash: "SHA-256",
+          },
+          keyMaterial,
+          { name: AES_ALGO, length: 256 },
+          false,
+          ["encrypt", "decrypt"],
+        );
+      }
+
+      async function decrypt(password, block) {
+        if (!block || !block.salt || !block.iv || !block.data || !block.version) {
+          throw new Error("invalid encrypted block missing fields");
+        }
+        if (block.version !== 1) {
+          throw new Error(`version ${block.version} not supported`);
+        }
+
+        const salt = base64ToUint8Array(block.salt);
+        const iv = base64ToUint8Array(block.iv);
+        const data = base64ToUint8Array(block.data);
+
+        const dec = new TextDecoder();
+        const key = await getKey(password, salt);
+        const decrypted = await window.crypto.subtle.decrypt(
+          { name: AES_ALGO, iv },
+          key,
+          data,
+        );
+
+        return dec.decode(decrypted);
+      }
+
+      function parseClaimFile(contents) {
+        let data;
+        try {
+          data = JSON.parse(contents);
+        } catch {
+          throw new Error("Invalid JSON file.");
+        }
+
+        if (!data || typeof data !== "object") {
+          throw new Error("Invalid message data.");
+        }
+
+        const note = data.note;
+        if (typeof note !== "string" || !note.trim()) {
+          throw new Error("Missing note in file.");
+        }
+
+        const encryptedRaw = data.encrypted;
+        if (!encryptedRaw) {
+          throw new Error("Missing encrypted block in file.");
+        }
+
+        let encryptedBlock;
+        if (typeof encryptedRaw === "string") {
+          try {
+            encryptedBlock = JSON.parse(encryptedRaw);
+          } catch {
+            throw new Error("Encrypted block is not valid JSON.");
+          }
+        } else {
+          encryptedBlock = encryptedRaw;
+        }
+
+        if (
+          !encryptedBlock ||
+          typeof encryptedBlock !== "object" ||
+          typeof encryptedBlock.salt !== "string" ||
+          typeof encryptedBlock.iv !== "string" ||
+          typeof encryptedBlock.data !== "string" ||
+          typeof encryptedBlock.version !== "number"
+        ) {
+          throw new Error("Encrypted block is missing required fields.");
+        }
+
+        return { note, encryptedBlock };
+      }
+
+      window.claimFileHelpers = {
+        decrypt,
+        parseClaimFile,
+      };
+    </script>
+
+    <script>
+      "use strict";
+
+      const fileInput = document.getElementById("claimFile");
+      const fileName = document.getElementById("fileName");
+      const loading = document.getElementById("loading");
+      const status = document.getElementById("status");
+      const claimSection = document.getElementById("claimSection");
+      const decryptedSection = document.getElementById("decryptedSection");
+      const note = document.getElementById("note");
+      const noteReadOnly = document.getElementById("noteReadOnly");
+      const password = document.getElementById("password");
+      const decryptForm = document.getElementById("decryptForm");
+      const decrypted = document.getElementById("decrypted");
+      const decryptButton = document.getElementById("decryptButton");
+
+      let currentTrigger = null;
+
+      function setStatus(message) {
+        if (!message) {
+          status.hidden = true;
+          status.textContent = "";
+          return;
+        }
+        status.hidden = false;
+        status.textContent = message;
+      }
+
+      function resetDecrypted() {
+        decrypted.value = "";
+        decryptedSection.hidden = true;
+        decryptButton.disabled = false;
+      }
+
+      function showClaimSection(trigger) {
+        claimSection.hidden = false;
+        decryptedSection.hidden = true;
+        note.value = trigger.note;
+        noteReadOnly.value = trigger.note;
+      }
+
+      function clearClaimSection() {
+        claimSection.hidden = true;
+        decryptedSection.hidden = true;
+        note.value = "";
+        noteReadOnly.value = "";
+        decrypted.value = "";
+      }
+
+      fileInput.addEventListener("change", async (event) => {
+        const file = event.target.files && event.target.files[0];
+        setStatus("");
+        resetDecrypted();
+        password.value = "";
+
+        if (!file) {
+          currentTrigger = null;
+          fileName.textContent = "";
+          clearClaimSection();
+          return;
+        }
+
+        loading.hidden = false;
+        try {
+          const contents = await file.text();
+          currentTrigger = window.claimFileHelpers.parseClaimFile(contents);
+          fileName.textContent = `Loaded file: ${file.name}`;
+          showClaimSection(currentTrigger);
+        } catch (error) {
+          currentTrigger = null;
+          fileName.textContent = "";
+          clearClaimSection();
+          setStatus(error instanceof Error ? error.message : "Unable to read file.");
+        } finally {
+          loading.hidden = true;
+        }
+      });
+
+      decryptForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setStatus("");
+        resetDecrypted();
+
+        if (!currentTrigger) {
+          setStatus("Message data is not available.");
+          return;
+        }
+        if (!password.value.trim()) {
+          setStatus("Enter the password to decrypt.");
+          return;
+        }
+
+        decryptButton.disabled = true;
+        try {
+          const text = await window.claimFileHelpers.decrypt(
+            password.value,
+            currentTrigger.encryptedBlock,
+          );
+          decrypted.value = text;
+          decryptedSection.hidden = false;
+          claimSection.hidden = true;
+        } catch {
+          setStatus("Incorrect password or unable to decrypt.");
+        } finally {
+          decryptButton.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

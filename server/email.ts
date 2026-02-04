@@ -1,11 +1,14 @@
 import nodemailer from "nodemailer";
 
+type EmailAttachment = {
+  filename: string;
+  content: string | Buffer;
+  contentType: string;
+};
+
 interface SendEmailParams {
   content: string;
-  attachmentJson?: {
-    filename: string;
-    data: unknown;
-  };
+  attachments?: EmailAttachment[];
   to: string;
   subject: string;
 }
@@ -33,14 +36,6 @@ export async function sendEmailViaSmtp(params: SendEmailParams) {
     to: params.to,
     subject: params.subject,
     text: params.content,
-    attachments: params.attachmentJson
-      ? [
-          {
-            filename: params.attachmentJson.filename,
-            content: JSON.stringify(params.attachmentJson.data, null, 2),
-            contentType: "application/json",
-          },
-        ]
-      : undefined,
+    attachments: params.attachments?.length ? params.attachments : undefined,
   });
 }
