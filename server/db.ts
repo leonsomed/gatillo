@@ -57,7 +57,8 @@ export async function initDb() {
       lastTriggerTimestamp INTEGER,
       triggerMsSinceLastCheckin	INTEGER NOT NULL,
       triggerSentNotificationCount INTEGER NOT NULL,
-      label TEXT NOT NULL
+      label TEXT NOT NULL,
+      subject TEXT NOT NULL DEFAULT ''
     );`);
 
     db.exec(`

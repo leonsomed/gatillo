@@ -1,3 +1,5 @@
+import { sendEmailViaSmtp } from "./email";
+
 export type ErrorType = "AuthError" | "InvalidRequestError";
 
 export class AuthError extends Error {
@@ -53,8 +55,16 @@ export async function reportError(
     options,
   };
 
-  if (process.env.NODE_ENV === "production") {
-    // TODO send email
-    console.error(JSON.stringify(payload, null, 2));
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.NODE_MAINTAINER_EMAIL
+  ) {
+    const output = JSON.stringify(payload, null, 2);
+    console.error(output);
+    await sendEmailViaSmtp({
+      subject: `Gatillo Error Report`,
+      to: process.env.NODE_MAINTAINER_EMAIL as string,
+      content: output,
+    });
   }
 }

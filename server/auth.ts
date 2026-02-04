@@ -6,10 +6,11 @@ import { Strategy as MagicLinkStrategy } from "passport-magic-link";
 import sessionFileStore from "session-file-store";
 import { AuthError } from "./errors";
 import { getUserByEmail, insertUser } from "./users";
+import { sendEmailViaSmtp } from "./email";
 
 const sessionSecret = process.env.SESSION_SECRET as string;
 const magicLinkSecret = process.env.MAGIC_LINK_SECRET as string;
-const magicLinkBaseUrl = process.env.MAGIC_LINK_BASE_URL as string;
+const magicLinkBaseUrl = process.env.BASE_URL as string;
 
 const FileStore = sessionFileStore(session);
 
@@ -45,8 +46,14 @@ const strategy = new MagicLinkStrategy(
     const magicLinkUrl = new URL("/auth/magiclink/callback", magicLinkBaseUrl);
     magicLinkUrl.searchParams.set("token", token);
 
-    // TODO send email
-    console.log(`Magic link for ${user.email}: ${magicLinkUrl.toString()}`);
+    await sendEmailViaSmtp({
+      subject: `Gatillo Magic Link`,
+      to: user.email as string,
+      content: `Magic link for ${user.email}: ${magicLinkUrl.toString()}`,
+    });
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`Magic link for ${user.email}: ${magicLinkUrl.toString()}`);
+    }
   },
   async (userFields) => {
     const rawEmail = userFields.email;

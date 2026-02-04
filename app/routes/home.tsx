@@ -43,11 +43,24 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       )}
       {auth.error ? <p>{auth.error}</p> : null}
       <div style={{ display: "flex", gap: "0.5rem" }}>
+        <p>
+          <Link to="/triggers/claim" role="button">
+            Claim trigger
+          </Link>
+        </p>
+
         {!auth.isLoading && auth.isAuthenticated ? (
           <p>
             <Link to="/triggers" role="button">
               Manage triggers
             </Link>
+          </p>
+        ) : null}
+        {!auth.isLoading && auth.isAuthenticated ? (
+          <p>
+            <button type="button" onClick={() => void auth.logout()}>
+              Sign out
+            </button>
           </p>
         ) : null}
         {!auth.isLoading && !auth.isAuthenticated ? (
@@ -57,12 +70,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             </Link>
           </p>
         ) : null}
-
-        <p>
-          <Link to="/triggers/claim" role="button">
-            Claim trigger
-          </Link>
-        </p>
       </div>
     </div>
   );

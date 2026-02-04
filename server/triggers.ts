@@ -12,6 +12,7 @@ export type Trigger = {
   recipients: string;
   note: string;
   label: string;
+  subject: string;
   encrypted: string;
   checkinIntervalMs: number;
   lastIntervalTimestamp: number;
@@ -25,6 +26,7 @@ type TriggerInput = {
   recipients: string;
   note: string;
   label: string;
+  subject: string;
   encrypted: string;
   checkinIntervalMs: number;
   triggerMsSinceLastCheckin: number;
@@ -64,6 +66,7 @@ function parseTriggerInput(
     typeof input.recipients === "string" ? input.recipients.trim() : "";
   const note = typeof input.note === "string" ? input.note.trim() : "";
   const label = typeof input.label === "string" ? input.label.trim() : "";
+  const subject = typeof input.subject === "string" ? input.subject.trim() : "";
   const encrypted =
     typeof input.encrypted === "string" ? input.encrypted.trim() : "";
   const checkinIntervalMs =
@@ -90,6 +93,7 @@ function parseTriggerInput(
     recipients,
     note,
     label,
+    subject,
     encrypted,
     checkinIntervalMs,
     triggerMsSinceLastCheckin,
@@ -99,7 +103,7 @@ function parseTriggerInput(
 async function getTriggersByUserId(userId: string): Promise<Trigger[]> {
   return await useDb(async (db) => {
     const op = db.prepare(
-      `SELECT id, userId, recipients, note, label, encrypted, checkinIntervalMs, lastIntervalTimestamp, lastCheckinTimestamp, triggerMsSinceLastCheckin, lastTriggerTimestamp, triggerSentNotificationCount
+      `SELECT id, userId, recipients, note, label, subject, encrypted, checkinIntervalMs, lastIntervalTimestamp, lastCheckinTimestamp, triggerMsSinceLastCheckin, lastTriggerTimestamp, triggerSentNotificationCount
       FROM triggers WHERE userId = ? ORDER BY lastCheckinTimestamp DESC`,
     );
     return op.all(userId) as Trigger[];
@@ -109,7 +113,7 @@ async function getTriggersByUserId(userId: string): Promise<Trigger[]> {
 export async function getAllTriggers(): Promise<Trigger[]> {
   return await useDb(async (db) => {
     const op = db.prepare(
-      `SELECT id, userId, recipients, note, label, encrypted, checkinIntervalMs, lastIntervalTimestamp, lastCheckinTimestamp, triggerMsSinceLastCheckin, lastTriggerTimestamp, triggerSentNotificationCount
+      `SELECT id, userId, recipients, note, label, subject, encrypted, checkinIntervalMs, lastIntervalTimestamp, lastCheckinTimestamp, triggerMsSinceLastCheckin, lastTriggerTimestamp, triggerSentNotificationCount
       FROM triggers`,
     );
     return op.all() as Trigger[];
@@ -128,6 +132,7 @@ async function insertTrigger(
     note: input.note,
     encrypted: input.encrypted,
     label: input.label,
+    subject: input.subject,
     checkinIntervalMs: input.checkinIntervalMs,
     lastIntervalTimestamp: now,
     lastCheckinTimestamp: now,
@@ -138,8 +143,8 @@ async function insertTrigger(
 
   await useDb(async (db) => {
     const op = db.prepare(
-      `INSERT INTO triggers (id, userId, recipients, note, label, encrypted, checkinIntervalMs, lastIntervalTimestamp, lastCheckinTimestamp, triggerMsSinceLastCheckin, triggerSentNotificationCount)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO triggers (id, userId, recipients, note, label, subject, encrypted, checkinIntervalMs, lastIntervalTimestamp, lastCheckinTimestamp, triggerMsSinceLastCheckin, triggerSentNotificationCount)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     op.run(
       trigger.id,
@@ -147,6 +152,7 @@ async function insertTrigger(
       trigger.recipients,
       trigger.note,
       trigger.label,
+      trigger.subject,
       trigger.encrypted,
       trigger.checkinIntervalMs,
       trigger.lastIntervalTimestamp,
@@ -168,7 +174,7 @@ async function updateTrigger(
     if (input.encrypted) {
       const op = db.prepare(
         `UPDATE triggers
-        SET encrypted = ?, recipients = ?, note = ?, label = ?, checkinIntervalMs = ?, triggerMsSinceLastCheckin = ?
+        SET encrypted = ?, recipients = ?, note = ?, label = ?, subject = ?, checkinIntervalMs = ?, triggerMsSinceLastCheckin = ?
         WHERE id = ? AND userId = ?`,
       );
       const result = op.run(
@@ -176,6 +182,7 @@ async function updateTrigger(
         input.recipients,
         input.note,
         input.label,
+        input.subject,
         input.checkinIntervalMs,
         input.triggerMsSinceLastCheckin,
         triggerId,
@@ -188,13 +195,14 @@ async function updateTrigger(
     } else {
       const op = db.prepare(
         `UPDATE triggers
-        SET recipients = ?, note = ?, label = ?, checkinIntervalMs = ?, triggerMsSinceLastCheckin = ?
+        SET recipients = ?, note = ?, label = ?, subject = ?, checkinIntervalMs = ?, triggerMsSinceLastCheckin = ?
         WHERE id = ? AND userId = ?`,
       );
       const result = op.run(
         input.recipients,
         input.note,
         input.label,
+        input.subject,
         input.checkinIntervalMs,
         input.triggerMsSinceLastCheckin,
         triggerId,
@@ -288,7 +296,7 @@ async function getCheckinToken(token: string): Promise<CheckinToken | null> {
 async function getTriggerById(triggerId: string): Promise<Trigger | null> {
   return await useDb(async (db) => {
     const op = db.prepare(
-      `SELECT id, userId, recipients, note, label, encrypted, checkinIntervalMs, lastIntervalTimestamp, lastCheckinTimestamp, triggerMsSinceLastCheckin, lastTriggerTimestamp
+      `SELECT id, userId, recipients, note, label, subject, encrypted, checkinIntervalMs, lastIntervalTimestamp, lastCheckinTimestamp, triggerMsSinceLastCheckin, lastTriggerTimestamp
       FROM triggers WHERE id = ?`,
     );
     return (op.get(triggerId) as Trigger | undefined) ?? null;

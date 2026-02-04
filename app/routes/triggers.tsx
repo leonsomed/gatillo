@@ -9,6 +9,7 @@ type Trigger = {
   id: string;
   recipients: string;
   label: string;
+  subject: string;
   note: string;
   encrypted: string;
   checkinIntervalMs: number;
@@ -47,6 +48,7 @@ type TriggerFormState = {
   encryptionPassword: string;
   note: string;
   label: string;
+  subject: string;
 };
 
 const emptyForm: TriggerFormState = {
@@ -58,6 +60,7 @@ const emptyForm: TriggerFormState = {
   encryptionPassword: "",
   note: "",
   label: "",
+  subject: "",
 };
 
 const DATE_TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
@@ -175,6 +178,7 @@ export default function Triggers() {
       encryptionPassword: "",
       note: trigger.note,
       label: trigger.label,
+      subject: trigger.subject ?? "",
     });
     setIsFormOpen(true);
   }
@@ -277,6 +281,7 @@ export default function Triggers() {
             triggerMsSinceLastCheckin,
             note: form.note,
             label: form.label,
+            subject: form.subject,
           }),
         },
       );
@@ -459,7 +464,7 @@ export default function Triggers() {
                         style={{ textWrap: "nowrap" }}
                         disabled={isSaving || isDeleting}
                       >
-                        Download JSON
+                        Download
                       </button>
                       <button
                         type="button"
@@ -499,6 +504,21 @@ export default function Triggers() {
               <h2>{activeId ? "Edit trigger" : "Add trigger"}</h2>
             </header>
             <form>
+              <div
+                role="alert"
+                style={{
+                  border: "2px solid #d12b2b",
+                  background: "#ffe9e9",
+                  color: "#7a1111",
+                  padding: "12px 14px",
+                  borderRadius: "8px",
+                  fontWeight: 700,
+                  marginBottom: "16px",
+                }}
+              >
+                Alert: Recipient email addresses must be verified in AWS SES
+                before they can receive trigger notifications.
+              </div>
               <label>
                 Label
                 <input
@@ -512,6 +532,21 @@ export default function Triggers() {
                     }))
                   }
                   required
+                  disabled={isSaving}
+                />
+              </label>
+              <label>
+                Subject (optional)
+                <input
+                  name="subject"
+                  placeholder="Email subject for trigger notifications"
+                  value={form.subject}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      subject: event.target.value,
+                    }))
+                  }
                   disabled={isSaving}
                 />
               </label>
