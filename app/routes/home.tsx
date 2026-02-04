@@ -37,23 +37,33 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       {auth.isLoading ? (
         <p>Checking sign-in status...</p>
       ) : auth.isAuthenticated ? (
-        <p>Signed in{auth.user?.email ? ` as ${auth.user.email}` : ""}.</p>
+        <p>Signed in{auth.user?.email ? ` as ${auth.user.email}` : ""}</p>
       ) : (
         <p>Not signed in.</p>
       )}
       {auth.error ? <p>{auth.error}</p> : null}
-      {!auth.isLoading && auth.isAuthenticated ? (
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        {!auth.isLoading && auth.isAuthenticated ? (
+          <p>
+            <Link to="/triggers" role="button">
+              Manage triggers
+            </Link>
+          </p>
+        ) : null}
+        {!auth.isLoading && !auth.isAuthenticated ? (
+          <p>
+            <Link to="/sign-in" role="button">
+              Sign in
+            </Link>
+          </p>
+        ) : null}
+
         <p>
-          <Link to="/triggers" role="button">
-            Manage triggers
+          <Link to="/triggers/claim" role="button">
+            Claim trigger
           </Link>
         </p>
-      ) : null}
-      {!auth.isLoading && !auth.isAuthenticated ? (
-        <Link to="/sign-in" role="button">
-          Sign in
-        </Link>
-      ) : null}
+      </div>
     </div>
   );
 }

@@ -320,6 +320,26 @@ export default function Triggers() {
     alert("Claim URL copied to clipboard");
   }
 
+  function downloadTriggerData(trigger: Trigger) {
+    const payload = {
+      github: "https://github.com/leonsomed/gatillo",
+      note: trigger.note,
+      encrypted: JSON.parse(trigger.encrypted),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const filename = `trigger-${trigger.label || trigger.id}.json`;
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function deleteTrigger() {
     if (!deleteTarget) {
       return;
@@ -431,6 +451,15 @@ export default function Triggers() {
                         style={{ textWrap: "nowrap" }}
                       >
                         Claim URL
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadTriggerData(trigger)}
+                        className="outline"
+                        style={{ textWrap: "nowrap" }}
+                        disabled={isSaving || isDeleting}
+                      >
+                        Download JSON
                       </button>
                       <button
                         type="button"
