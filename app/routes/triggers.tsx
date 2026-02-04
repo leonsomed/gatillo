@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { Route } from "./+types/triggers";
 import { useAuth } from "~/AuthContext";
@@ -123,6 +123,8 @@ export default function Triggers() {
   const [deleteTarget, setDeleteTarget] = useState<Trigger | null>(null);
   const [deleteStatus, setDeleteStatus] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const formDialogRef = useRef<HTMLDialogElement | null>(null);
+  const deleteDialogRef = useRef<HTMLDialogElement | null>(null);
 
   const isReady = !auth.isLoading && auth.isAuthenticated;
 
@@ -160,6 +162,34 @@ export default function Triggers() {
       void loadTriggers();
     }
   }, [isReady]);
+
+  useEffect(() => {
+    const dialog = formDialogRef.current;
+    if (!dialog) {
+      return;
+    }
+    if (isFormOpen) {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  }, [isFormOpen]);
+
+  useEffect(() => {
+    const dialog = deleteDialogRef.current;
+    if (!dialog) {
+      return;
+    }
+    if (isDeleteOpen) {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  }, [isDeleteOpen]);
 
   function startNew() {
     setActiveId(null);
@@ -379,147 +409,166 @@ export default function Triggers() {
 
   if (auth.isLoading) {
     return (
-      <div>
-        <p>Checking sign-in status...</p>
+      <div className="mx-auto w-full max-w-5xl px-6 py-12">
+        <p className="text-slate-300">Checking sign-in status...</p>
       </div>
     );
   }
 
   if (!auth.isAuthenticated) {
     return (
-      <div>
-        <h1>Triggers</h1>
-        <p>Sign in to manage triggers.</p>
+      <div className="mx-auto w-full max-w-2xl px-6 py-12">
+        <h1 className="mb-3 text-3xl font-semibold">Triggers</h1>
+        <p className="text-slate-300">Sign in to manage triggers.</p>
         <p>
-          <Link to="/sign-in">Sign in</Link>
-        </p>
-        <p>
-          <Link to="/">Back to home</Link>
+          <Link to="/sign-in" className="text-blue-300 hover:underline">
+            Sign in
+          </Link>
         </p>
       </div>
     );
   }
 
   return (
-    <div className="container">
-      <section>
-        <h2
-          style={{
-            margin: "20px",
-            display: "flex",
-            justifyContent: "space-between",
-          }}
-        >
+    <div className="mx-auto w-full max-w-7xl px-6 py-12">
+      <section className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <h2 className="mb-4 flex items-center justify-between gap-4 text-2xl font-semibold">
           Triggers{" "}
           <button
             type="button"
             onClick={startNew}
             disabled={isSaving || isDeleting}
+            className="cursor-pointer inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             New trigger
           </button>
         </h2>
-        {isLoading ? <p>Loading triggers...</p> : null}
+        {isLoading ? (
+          <p className="text-sm text-slate-400">Loading triggers...</p>
+        ) : null}
         {!isLoading && sortedTriggers.length === 0 ? (
-          <p>No triggers yet.</p>
+          <p className="text-slate-300">No triggers yet.</p>
         ) : null}
         {sortedTriggers.length ? (
-          <table>
-            <thead>
-              <tr>
-                <th>Label</th>
-                <th>Check-in interval</th>
-                <th>Check-in trigger threshold</th>
-                <th>Last check-in sent</th>
-                <th>Last check-in received</th>
-                <th>Last trigger</th>
-                <th>Trigger notifications</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedTriggers.map((trigger) => (
-                <tr key={trigger.id}>
-                  <td>{trigger.label}</td>
-                  <td>{formatDurationMs(trigger.checkinIntervalMs)}</td>
-                  <td>{formatDurationMs(trigger.triggerMsSinceLastCheckin)}</td>
-                  <td>{formatTimestamp(trigger.lastIntervalTimestamp)}</td>
-                  <td>{formatTimestamp(trigger.lastCheckinTimestamp)}</td>
-                  <td>{formatTimestamp(trigger.lastTriggerTimestamp)}</td>
-                  <td>{trigger.triggerSentNotificationCount || "—"}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      <button
-                        type="button"
-                        onClick={() => void copyClaimUrl(trigger.id)}
-                        className="outline secondary"
-                        style={{ textWrap: "nowrap" }}
-                      >
-                        Claim URL
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => downloadTriggerData(trigger)}
-                        className="outline"
-                        style={{ textWrap: "nowrap" }}
-                        disabled={isSaving || isDeleting}
-                      >
-                        Download
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => startEdit(trigger)}
-                        disabled={isSaving || isDeleting}
-                        style={{ textWrap: "nowrap" }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => startDelete(trigger)}
-                        disabled={isSaving || isDeleting}
-                        className="secondary"
-                        style={{ textWrap: "nowrap" }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm text-slate-200">
+              <thead className="bg-slate-950 text-slate-200">
+                <tr>
+                  <th className="border border-slate-800 px-3 py-2">Label</th>
+                  <th className="border border-slate-800 px-3 py-2">
+                    Check-in interval
+                  </th>
+                  <th className="border border-slate-800 px-3 py-2">
+                    Check-in trigger threshold
+                  </th>
+                  <th className="border border-slate-800 px-3 py-2">
+                    Last check-in sent
+                  </th>
+                  <th className="border border-slate-800 px-3 py-2">
+                    Last check-in received
+                  </th>
+                  <th className="border border-slate-800 px-3 py-2">
+                    Last trigger
+                  </th>
+                  <th className="border border-slate-800 px-3 py-2">
+                    Trigger notifications
+                  </th>
+                  <th className="border border-slate-800 px-3 py-2">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sortedTriggers.map((trigger) => (
+                  <tr
+                    key={trigger.id}
+                    className="odd:bg-slate-900 even:bg-slate-950/80"
+                  >
+                    <td className="border border-slate-800 px-3 py-2">
+                      {trigger.label}
+                    </td>
+                    <td className="border border-slate-800 px-3 py-2">
+                      {formatDurationMs(trigger.checkinIntervalMs)}
+                    </td>
+                    <td className="border border-slate-800 px-3 py-2">
+                      {formatDurationMs(trigger.triggerMsSinceLastCheckin)}
+                    </td>
+                    <td className="border border-slate-800 px-3 py-2">
+                      {formatTimestamp(trigger.lastIntervalTimestamp)}
+                    </td>
+                    <td className="border border-slate-800 px-3 py-2">
+                      {formatTimestamp(trigger.lastCheckinTimestamp)}
+                    </td>
+                    <td className="border border-slate-800 px-3 py-2">
+                      {formatTimestamp(trigger.lastTriggerTimestamp)}
+                    </td>
+                    <td className="border border-slate-800 px-3 py-2">
+                      {trigger.triggerSentNotificationCount || "—"}
+                    </td>
+                    <td className="border border-slate-800 px-3 py-2">
+                      <div className="flex flex-nowrap gap-2 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => void copyClaimUrl(trigger.id)}
+                          className="cursor-pointer inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800"
+                        >
+                          Claim URL
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => downloadTriggerData(trigger)}
+                          className="cursor-pointer inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={isSaving || isDeleting}
+                        >
+                          Download
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(trigger)}
+                          disabled={isSaving || isDeleting}
+                          className="cursor-pointer inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => startDelete(trigger)}
+                          disabled={isSaving || isDeleting}
+                          className="cursor-pointer inline-flex items-center justify-center rounded-lg bg-red-700 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : null}
       </section>
       {isFormOpen ? (
         <dialog
-          open
+          ref={formDialogRef}
           onCancel={(event) => {
             event.preventDefault();
             closeForm();
           }}
+          className="fixed inset-0 m-auto h-fit w-full max-w-2xl rounded-xl border border-slate-800 bg-slate-900 p-0 text-slate-200 backdrop:bg-slate-900/95"
         >
-          <article>
-            <header>
-              <h2>{activeId ? "Edit trigger" : "Add trigger"}</h2>
+          <article className="rounded-xl bg-slate-900 p-4">
+            <header className="mb-4">
+              <h2 className="text-2xl font-semibold">
+                {activeId ? "Edit trigger" : "Add trigger"}
+              </h2>
             </header>
-            <form>
+            <form className="space-y-3">
               <div
                 role="alert"
-                style={{
-                  border: "2px solid #d12b2b",
-                  background: "#ffe9e9",
-                  color: "#7a1111",
-                  padding: "12px 14px",
-                  borderRadius: "8px",
-                  fontWeight: 700,
-                  marginBottom: "16px",
-                }}
+                className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200"
               >
                 Alert: Recipient email addresses must be verified in AWS SES
                 before they can receive trigger notifications.
               </div>
-              <label>
+              <label className="block text-sm font-semibold text-slate-200">
                 Label
                 <input
                   name="label"
@@ -533,9 +582,10 @@ export default function Triggers() {
                   }
                   required
                   disabled={isSaving}
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
               </label>
-              <label>
+              <label className="block text-sm font-semibold text-slate-200">
                 Subject (optional)
                 <input
                   name="subject"
@@ -548,9 +598,10 @@ export default function Triggers() {
                     }))
                   }
                   disabled={isSaving}
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
               </label>
-              <label>
+              <label className="block text-sm font-semibold text-slate-200">
                 Recipients (comma-separated emails)
                 <input
                   name="recipients"
@@ -564,9 +615,10 @@ export default function Triggers() {
                   }
                   required
                   disabled={isSaving}
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
               </label>
-              <label>
+              <label className="block text-sm font-semibold text-slate-200">
                 Time between check-ins
                 <select
                   name="checkinIntervalMs"
@@ -579,6 +631,7 @@ export default function Triggers() {
                   }
                   required
                   disabled={isSaving}
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 >
                   <option value="" disabled>
                     Select interval
@@ -590,7 +643,7 @@ export default function Triggers() {
                   ))}
                 </select>
               </label>
-              <label>
+              <label className="block text-sm font-semibold text-slate-200">
                 Time allowed since last check-in
                 <select
                   name="triggerMsSinceLastCheckin"
@@ -603,6 +656,7 @@ export default function Triggers() {
                   }
                   required
                   disabled={isSaving}
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 >
                   <option value="" disabled>
                     Select interval
@@ -614,7 +668,7 @@ export default function Triggers() {
                   ))}
                 </select>
               </label>
-              <label>
+              <label className="block text-sm font-semibold text-slate-200">
                 Note
                 <textarea
                   name="note"
@@ -625,9 +679,10 @@ export default function Triggers() {
                   }
                   required
                   disabled={isSaving}
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
               </label>
-              <label>
+              <label className="block text-sm font-semibold text-slate-200">
                 Encryption password
                 <input
                   name="encryptionPassword"
@@ -644,8 +699,9 @@ export default function Triggers() {
                   }}
                   required
                   disabled={isSaving}
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
-                <label>
+                <label className="mt-2 flex items-center gap-2 text-sm font-medium text-slate-300">
                   <input
                     type="checkbox"
                     checked={revealPassword}
@@ -653,11 +709,12 @@ export default function Triggers() {
                       setRevealPassword(event.target.checked)
                     }
                     disabled={isSaving}
+                    className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-blue-500"
                   />
                   Show password
                 </label>
               </label>
-              <label>
+              <label className="block text-sm font-semibold text-slate-200">
                 Encrypted Note
                 <textarea
                   name="decrypted"
@@ -671,20 +728,26 @@ export default function Triggers() {
                   }
                   required
                   disabled={isSaving || Boolean(activeId && !form.decrypted)}
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                 />
               </label>
-              {status ? <p style={{ color: "red" }}>{status}</p> : null}
+              {status ? <p className="text-sm text-red-300">{status}</p> : null}
             </form>
-            <footer>
+            <footer className="mt-6 flex flex-wrap justify-end gap-3">
               <button
                 type="button"
-                className="secondary"
                 onClick={closeForm}
                 disabled={isSaving}
+                className="cursor-pointer inline-flex items-center justify-center rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
-              <button type="button" onClick={saveTrigger} disabled={isSaving}>
+              <button
+                type="button"
+                onClick={saveTrigger}
+                disabled={isSaving}
+                className="cursor-pointer inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
                 {isSaving
                   ? "Saving..."
                   : activeId
@@ -697,29 +760,30 @@ export default function Triggers() {
       ) : null}
       {isDeleteOpen && deleteTarget ? (
         <dialog
-          open
+          ref={deleteDialogRef}
           onCancel={(event) => {
             event.preventDefault();
             closeDelete();
           }}
+          className="fixed inset-0 m-auto h-fit w-full max-w-xl rounded-xl border border-slate-800 bg-slate-900 p-0 text-slate-200 backdrop:bg-slate-900/95"
         >
-          <article>
-            <header>
-              <h2>Delete trigger</h2>
+          <article className="rounded-xl bg-slate-900 p-4">
+            <header className="mb-4">
+              <h2 className="text-2xl font-semibold">Delete trigger</h2>
             </header>
-            <p>
+            <p className="text-slate-300">
               Are you sure you want to delete{" "}
               <strong>{deleteTarget.label}</strong>? This cannot be undone.
             </p>
             {deleteStatus ? (
-              <p style={{ color: "red" }}>{deleteStatus}</p>
+              <p className="mt-3 text-sm text-red-300">{deleteStatus}</p>
             ) : null}
-            <footer>
+            <footer className="mt-6 flex flex-wrap justify-end gap-3">
               <button
                 type="button"
-                className="secondary"
                 onClick={closeDelete}
                 disabled={isDeleting}
+                className="cursor-pointer inline-flex items-center justify-center rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -727,6 +791,7 @@ export default function Triggers() {
                 type="button"
                 onClick={deleteTrigger}
                 disabled={isDeleting}
+                className="cursor-pointer inline-flex items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isDeleting ? "Deleting..." : "Delete trigger"}
               </button>
@@ -734,9 +799,6 @@ export default function Triggers() {
           </article>
         </dialog>
       ) : null}
-      <p>
-        <Link to="/">Back to home</Link>
-      </p>
     </div>
   );
 }

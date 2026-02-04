@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Link } from "react-router";
 import type { Route } from "./+types/home";
 import { useAuth } from "~/AuthContext";
 
@@ -32,45 +31,18 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   }, []);
 
   return (
-    <div className="container">
-      <h1>Welcome to gatillo</h1>
+    <div className="mx-auto w-full max-w-2xl px-6 py-12">
+      <h1 className="mb-3 text-3xl font-semibold">Welcome to gatillo</h1>
       {auth.isLoading ? (
-        <p>Checking sign-in status...</p>
+        <p className="text-slate-300">Checking sign-in status...</p>
       ) : auth.isAuthenticated ? (
-        <p>Signed in{auth.user?.email ? ` as ${auth.user.email}` : ""}</p>
-      ) : (
-        <p>Not signed in.</p>
-      )}
-      {auth.error ? <p>{auth.error}</p> : null}
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <p>
-          <Link to="/triggers/claim" role="button">
-            Claim trigger
-          </Link>
+        <p className="text-slate-300">
+          Signed in{auth.user?.email ? ` as ${auth.user.email}` : ""}
         </p>
-
-        {!auth.isLoading && auth.isAuthenticated ? (
-          <p>
-            <Link to="/triggers" role="button">
-              Manage triggers
-            </Link>
-          </p>
-        ) : null}
-        {!auth.isLoading && auth.isAuthenticated ? (
-          <p>
-            <button type="button" onClick={() => void auth.logout()}>
-              Sign out
-            </button>
-          </p>
-        ) : null}
-        {!auth.isLoading && !auth.isAuthenticated ? (
-          <p>
-            <Link to="/sign-in" role="button">
-              Sign in
-            </Link>
-          </p>
-        ) : null}
-      </div>
+      ) : (
+        <p className="text-slate-300">Not signed in.</p>
+      )}
+      {auth.error ? <p className="mt-3 text-red-300">{auth.error}</p> : null}
     </div>
   );
 }

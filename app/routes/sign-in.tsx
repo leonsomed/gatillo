@@ -1,6 +1,5 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { Link } from "react-router";
 import type { Route } from "./+types/sign-in";
 import { useAuth } from "~/AuthContext";
 
@@ -52,19 +51,21 @@ export default function SignIn() {
   }
 
   return (
-    <div className="container">
-      <h1>Sign in</h1>
+    <div className="mx-auto w-full max-w-2xl px-6 py-12">
+      <h1 className="mb-3 text-3xl font-semibold">Sign in</h1>
       {auth.isLoading ? (
-        <p>Checking sign-in status...</p>
+        <p className="text-slate-300">Checking sign-in status...</p>
       ) : auth.isAuthenticated ? (
-        <p>
+        <p className="text-slate-300">
           You are already signed in
           {auth.user?.email ? ` as ${auth.user.email}` : ""}.
         </p>
       ) : (
-        <p>Enter your email to receive a magic link.</p>
+        <p className="text-slate-300">
+          Enter your email to receive a magic link.
+        </p>
       )}
-      <form onSubmit={submitMagicLink}>
+      <form onSubmit={submitMagicLink} className="mt-4 space-y-3">
         <input
           name="email"
           type="email"
@@ -74,15 +75,17 @@ export default function SignIn() {
           onChange={(event) => setEmail(event.target.value)}
           required
           disabled={isSubmitting}
+          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
         />
-        <button type="submit" disabled={isSubmitting}>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="cursor-pointer inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+        >
           {isSubmitting ? "Sending..." : "Send magic link"}
         </button>
       </form>
-      {status ? <p>{status}</p> : null}
-      <p>
-        <Link to="/">Back to home</Link>
-      </p>
+      {status ? <p className="mt-3 text-red-300">{status}</p> : null}
     </div>
   );
 }
